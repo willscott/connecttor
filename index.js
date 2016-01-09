@@ -120,6 +120,10 @@ exports.connect = function (callback) {
   } else {
     require('./linux').openUnixSocket(callback, function (err) {
       console.error(chalk.red("Failed to connect to system tor:") + err);
+      console.error(chalk.yellow("Most common cause of this error is that your account does not"));
+      console.error(chalk.yellow("have permission to control tor. Rectify by running:"));
+      console.error(chalk.blue("sudo usermod -a -G debian-tor <username>"));
+
       callback(null);
     });
   }
