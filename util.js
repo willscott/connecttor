@@ -5,19 +5,23 @@
  */
 exports.attemptAuthentication = function (socket, cookie, success, failure) {
   socket.write("AUTHENTICATE " + cookie.toString("hex") + "\r\n");
-  var onEvent = function (buf) {
-    socket.removeListener('data', onEvent);
+  var onData = function (buf) {
     socket.removeListener('close', onEvent);
     socket.removeListener('error', onEvent);
 
-    if (buf.toString().indexOf('250') > 0) {
-      success();
+    if (buf.toString().indexOf('250') === 0) {
+      success(socket);
     } else {
-      failure();
+      failure(buf.toString());
     }
-
   };
-  socket.once('data', onEvent);
+  var onEvent = function (ev) {
+    socket.removeListener('close', onEvent);
+    socket.removeListener('error', onEvent);
+
+    failure(ev);
+  };
+  socket.once('data', onData);
   socket.once('close', onEvent);
   socket.once('error', onEvent);
 };
