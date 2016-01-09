@@ -147,7 +147,7 @@ exports.download = function (callback) {
       } else if (process.platform === "darwin") {
         callback(macPath);
       } else {
-        console.error(chalk.red("Not Mac/Windows. Skipping Tor Browser Download."));
+        console.warn(chalk.yellow("Not Mac/Windows. Skipping Tor Browser Download."));
         callback(false);
       }
     } else {
