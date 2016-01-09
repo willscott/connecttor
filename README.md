@@ -10,7 +10,7 @@ Usage
 
 ```javascript
 var connecttor = require('connecttor');
-connecttor.getControlSocket(function (socket) {
+connecttor.connect(function (socket) {
   // returns a net.socket connected to Tor's control port.
 });
 ```
