@@ -13,6 +13,7 @@ exports.openUnixSocket = function (success, failure) {
     cookie = fs.readFileSync("/var/run/tor/control.authcookie");
   } catch (e) {
     failure(e);
+    return;
   }
   var client = net.connect({path: "/var/run/tor/control"}, function () {
     client.removeListener('error', failure);

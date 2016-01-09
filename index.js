@@ -109,6 +109,7 @@ exports.connect = function (callback) {
     require('./download').download(function (tor) {
       if (!tor) {
         console.error(chalk.red("Failed to acquire an appropriate version of tor."));
+        callback(null);
         return;
       }
       startTor(tor, callback, function (err) {
