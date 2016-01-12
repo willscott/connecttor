@@ -1,6 +1,6 @@
 {
   "name": "connecttor",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Connect to Tor. Discovery and connective tissue for interacting with a local tor binary.",
   "main": "index.js",
   "scripts": {
