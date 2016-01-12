@@ -13,13 +13,20 @@ var util = require('./util');
 // The PID of a started to process, if one has been started by node.
 var runningChild;
 
+process.on('exit', function () {
+  if (runningChild) {
+    runningChild.kill();
+  }
+});
+
 /**
  * Create an authenticated net.socket connected to the control port of a
  * tor child process started by this process.
  */
 var connectWithChild = function (success, failure) {
   var cookie = readChildAuthCookie();
-  var client = net.connect({host: '127.0.0.1', port: 9151}, function () {
+  var port = readChildControlPort();
+  var client = net.connect({host: '127.0.0.1', port: port}, function () {
     client.removeListener('error', failure);
     util.attemptAuthentication(client, cookie, success, failure);
   });
@@ -37,8 +44,9 @@ var generateTorrc = function() {
   var template =
       "AvoidDiskWrites 1\n" +
       "Log notice stderr\n" +
-      "SocksPort 9150 IPv6Traffic PreferIPv6 KeepAliveIsolateSOCKSAuth\n" +
-      "ControlPort 9151\n" +
+      "SocksPort auto IPv6Traffic PreferIPv6 KeepAliveIsolateSOCKSAuth\n" +
+      "ControlPort auto\n" +
+      "ControlPortWriteToFile " + path.join(process.cwd(), ".tor", "control-port") + "\n" +
       "CookieAuthentication 1\n" +
       "DirReqStatistics 0\n" +
       "HiddenServiceStatistics 0\n";
@@ -55,12 +63,21 @@ var generateTorrc = function() {
 
 // Find the dir/.tor/control_auth_cookie file and read its contents.
 var readChildAuthCookie = function () {
-  var base = path.join(process.cwd(), ".tor");
-  var file = path.join(base, "control_auth_cookie");
-  if (fs.existsSync(file)) {
-    return fs.readFileSync(file);
+  var cookie = path.join(process.cwd(), ".tor", "control_auth_cookie");
+  if (fs.existsSync(cookie)) {
+    return fs.readFileSync(cookie);
   }
   return "";
+};
+
+var readChildControlPort = function () {
+  var port = path.join(process.cwd(), ".tor", "control-port");
+  if (fs.existsSync(port)) {
+    var data = fs.readFileSync(port).toString();
+    var port = Number(data.split(":")[1]);
+    return port;
+  }
+  return -1;
 };
 
 /**
@@ -69,7 +86,8 @@ var readChildAuthCookie = function () {
  */
 var startTor = function (binary, success, failure) {
   var torrc = generateTorrc();
-  console.log(binary);
+  //todo: ControlPort auto; ControlPortWriteToFile <file>
+  //todo: __OwningControllerProcess <pid>
   var child = child_process.spawn(binary, ['-f', torrc], {
     env: process.env
   });
@@ -77,15 +95,17 @@ var startTor = function (binary, success, failure) {
     console.error(chalk.red("Tor not found. Please install tor for your platform."));
     failure();
   });
-  child.once('data', waitForTor.bind(this, 0, success, failure));
+  runningChild = child;
+  setTimeout(waitForTor.bind(this, 0, success, failure), 100);
 };
 
 var waitForTor = function (i, success, failure) {
-  if (readChildAuthCookie().length) {
-    runningChild = true;
+  if (readChildControlPort() > 0) {
     // TODO: potentially should explicitly 'take-ownership' on first connect.
+    console.log('ctrl port found');
     connectWithChild(success, failure);
   } else if (i < 50) { // 5 seconds.
+    console.log('failed to find ctrl port.');
     setTimeout(waitForTor.bind(this, i + 1, success, failure), 100);
   }
 };
@@ -97,7 +117,10 @@ var waitForTor = function (i, success, failure) {
  */
 exports.connect = function (callback) {
   if (runningChild) {
-    return authWithChild(callback);
+    return connectWithChild(callback, function(err) {
+      console.error(chalk.red("Failed to connect to existing child."), err);
+      callback(null);
+    });
   }
   // if binary path is explicitly set, use that.
   if (process.env.tor) {
