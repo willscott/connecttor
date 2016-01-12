@@ -78,7 +78,7 @@ var unpackWin = function (callback) {
 };
 
 var macPath = function () {
-  return path.join(__dirname, ".tbb.app", "Contents", "TorBrowser", "Tor", "tor");
+  return path.join(__dirname, ".tbb.app", "TorBrowser", "Tor", "tor");
 };
 
 var unpackMac = function (callback) {
@@ -106,7 +106,7 @@ var unpackMac = function (callback) {
             if (code < 0) {
               console.warn(chalk.yellow("Warning: Cleaning up after download failed."));
             }
-            console.log('Mounted.');
+            console.log(chalk.green("Done."));
             callback(macPath());
           });
         });
@@ -158,9 +158,9 @@ exports.download = function (callback) {
       downloadVerifyUnpack(url, callback);
     } else if (url) { // == current version
       if (process.platform === "win32") {
-        callback(winPath);
+        callback(winPath());
       } else if (process.platform === "darwin") {
-        callback(macPath);
+        callback(macPath());
       } else {
         console.warn(chalk.yellow("Not Mac/Windows. Skipping Tor Browser Download."));
         callback(false);

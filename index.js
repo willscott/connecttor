@@ -43,7 +43,7 @@ var generateTorrc = function() {
       "DirReqStatistics 0\n" +
       "HiddenServiceStatistics 0\n";
   var base = path.join(process.cwd(), ".tor");
-  if (!fs.fileExistsSync(base)) {
+  if (!fs.existsSync(base)) {
     fs.mkdirSync(base);
   }
   template += "DataDirectory " + base + "\n";
@@ -57,7 +57,7 @@ var generateTorrc = function() {
 var readChildAuthCookie = function () {
   var base = path.join(process.cwd(), ".tor");
   var file = path.join(base, "control_auth_cookie");
-  if (fs.fileExistsSync(file)) {
+  if (fs.existsSync(file)) {
     return fs.readFileSync(file);
   }
   return "";
@@ -69,6 +69,7 @@ var readChildAuthCookie = function () {
  */
 var startTor = function (binary, success, failure) {
   var torrc = generateTorrc();
+  console.log(binary);
   var child = child_process.spawn(binary, ['-f', torrc], {
     env: process.env
   });
