@@ -20,7 +20,9 @@
   "author": "Will Scott <willscott@gmail.com> (https://wills.co.tt)",
   "license": "GPL-3.0",
   "dependencies": {
-    "chalk": "^1.1.1"
+    "chalk": "^1.1.1",
+    "ncp": "^2.0.0",
+    "request": "^2.67.0"
   },
   "optionalDependencies": {
     "7zip": "^0.0.3"

@@ -5,8 +5,10 @@
 var chalk = require('chalk');
 var child_process = require('child_process');
 var fs = require('fs');
+var ncp = require('ncp');
 var path = require('path');
 var request = require('request');
+var resolveurl = require('url').resolve;
 
 var TORURL = "https://www.torproject.org/projects/torbrowser.html.en";
 
@@ -23,18 +25,18 @@ var getDownloadLink = function (callback) {
       var urls = [], url;
       while ((url = urlMatch.exec(body)) !== null) {
         if (url[1][0] == ".") {
-          url[1] = path.join(path.dirname(TORURL), url[1]);
+          url[1] = resolveurl(path.dirname(TORURL), url[1]);
         }
         urls.push(url[1]);
       }
       for (url = 0; url < urls.length; url += 1) {
         var suffix = urls[url].substr(urls[url].lastIndexOf(".") + 1);
         if (process.platform === 'win32' && suffix == "exe") {
-          callback(urls[url]);
+          return callback(urls[url]);
         } else if (process.platform === 'darwin' && suffix == "dmg") {
-          callback(urls[url]);
+          return callback(urls[url]);
         } else if (suffix == "xz") {
-          callback(urls[url]);
+          return callback(urls[url]);
         }
       }
       callback(false);
@@ -47,9 +49,12 @@ var getDownloadLink = function (callback) {
 //TODO: pin expected cert: https://github.com/request/request#tlsssl-protocol
 var downloadVerify = function (url, file, callback) {
   var writeStream = fs.createWriteStream(file);
-  request(url).on('error', function () {
+  console.log('Downloading Tor...');
+  request(url).on('error', function (err) {
+    console.error(chalk.red('Error: '), err);
     callback(false);
   }).on('end', function () {
+    console.log(chalk.green('Done.'));
     callback(url);
   }).pipe(writeStream);
 };
@@ -73,7 +78,7 @@ var unpackWin = function (callback) {
 };
 
 var macPath = function () {
-  return path.join(__dirname, "");
+  return path.join(__dirname, ".tbb.app", "Contents", "TorBrowser", "Tor", "tor");
 };
 
 var unpackMac = function (callback) {
@@ -81,20 +86,30 @@ var unpackMac = function (callback) {
   // Rather than attach, copy, remove and keeping track of state we instead
   // "internet-enable" the image, and then 'unpack' it by attaching with the
   // idme option, causing the archive to be replaced by its contents.
-  var extractor = child_process.spawn("hdiutil", ["internet-enable", path.join(__dirname, ".tbb.dmg")]);
+  console.log('Unpacking...');
+  var extractor = child_process.spawn("hdiutil", ["attach", "-mountpoint", path.join(__dirname, ".tbb"), path.join(__dirname, ".tbb.dmg")]);
   extractor.on('close', function (code) {
     if (code < 0) {
-      console.error("Failed to process dmg.");
+      console.error(chalk.red("Failed to mount image."));
       return callback(false);
     }
-    extractor = child_process.spawn("hdiutil", ["attach", "-idme", path.join(__dirname, ".tbb.dmg")]);
-    extractor.on('close', function (code) {
-      if (code < 0) {
-        console.error("Failed to mount dmg.");
-        return callback(false);
-      }
-      callback(macPath());
-    });
+    ncp.ncp(
+        path.join(__dirname, ".tbb", "TorBrowser.app"),
+        path.join(__dirname, ".tbb.app"),
+        function (err) {
+          if (err) {
+            console.error(chalk.red("Unexpected download contents."));
+            return callback(false);
+          }
+          extractor = child_process.spawn("hdiutil", ["detach", path.join(__dirname, ".tbb")]);
+          extractor.on('close', function (code) {
+            if (code < 0) {
+              console.warn(chalk.yellow("Warning: Cleaning up after download failed."));
+            }
+            console.log('Mounted.');
+            callback(macPath());
+          });
+        });
   });
 };
 
