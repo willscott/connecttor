@@ -19,30 +19,37 @@ Design
 ------------
 Connecttor uses a platform-dependent mechanism to connect with tor. Sorry.
 
-On known linux distributions (currently debian variants), connecttor expects to
-use the system-bundled tor distribution. These implementations compartmentalize
-security, by running the tor process as a different user, so that even if the
-node process is compromised, it will not be able to read the private keys to
-subsequently impersonate onion addresses. Several Caveats apply. The first is
-that `apt-get install tor` does not set up an installation which can be
-controlled by other users. In addition, the user running node will need to be
-in the `debian-tor` unix group in order to connect to the tor control socket.
+By default, and as part of an `npm install`, Connecttor will download a platform
+dependent copy of the Tor Browser Bundle, and will use the tor packaged in that
+distribution as a daemon to connect with.
 
-On Mac and Windows distributions where tor does not attempt to user-isolate its
-keys, connecttor will attempt to find an installation of tor browser bundle or
-tor binary in standard locations, and will download a local copy if one is not
-found. It will then run its own instance of tor with a custom torrc
-configuration.
+If you wish to use connecttor with an external instance of tor, you can either
+do this by passing a `tor` option or setting the `tor` environmental variable
+to point to where the tor binary is on your system.
 
-Debian installation
--------------------
-
-1. Make sure tor is installed:
-```bash
-apt-get install tor
+Example:
+```javascript
+require('connecttor').connect({tor: "/usr/bin/tor"}, function (socket) {...});
 ```
 
-2. Add the user running node to the `debian-tor` group:
-```bash
-usermod -a -G debian-tor `whoami`
+If you wish to have connecttor interact with the control port of an already
+running tor distribution, you can specify the `useSystem` option.
+
+Example:
+```javascript
+require('connecttor').connect({useSystem: true}, function (socket) {...});
 ```
+
+Several Caveats apply to working with a system-tor installation to get the
+additional security properties it provides. They are documented below.
+
+System Tor Configuration
+------------------------
+
+This is tested on a current version of ubuntu, using the tor project's debian
+repository. Note that the system repositories as of 2016 use a 0.2.6 version of
+Tor, which can't easily do things like create hidden services from the control
+port. For configuration, you will need to add the
+[tor repository](https://www.torproject.org/docs/debian.html.en), and
+update tor. In addition, the user running node will need to be
+in the `debian-tor` unix group in order to connect to the control socket.
