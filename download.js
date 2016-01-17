@@ -113,6 +113,23 @@ var unpackMac = function (callback) {
   });
 };
 
+var linuxPath = function () {
+  return path.join(__dirname, "tor-browser_en-US", "Browser", "TorBrowser", "Tor", "tor.exe");
+};
+
+var unpackLinux = function (callback) {
+  console.log('Unpacking...');
+  var extractor = child_process.spawn("tar", ["xJf", path.join(__dirname, ".tbb.xz")]);
+  extractor.on('close', function (code) {
+    if (code < 0) {
+      console.error(chalk.red("Failed to extract bundle."));
+      return callback(false);
+    }
+    console.log(chalk.green("Done."));
+    callback(linuxPath());
+  });
+};
+
 var downloadVerifyUnpack = function (url, callback) {
   if (process.platform === "win32") {
     downloadVerify(url, path.join(__dirname, ".tbb.exe"), function (res) {
@@ -133,8 +150,14 @@ var downloadVerifyUnpack = function (url, callback) {
       }
     });
   } else {
-    console.error(chalk.red("Browser Bundle only used for Mac / Windows."));
-    callback(false);
+    downloadVerify(url, path.join(__dirname, ".tbb.xz"), function (res) {
+      if (res) {
+        saveCurrentVersion(url);
+        unpackLinux(callback);
+      } else {
+        callback(false);
+      }
+    });
   }
 };
 
@@ -152,18 +175,38 @@ var saveCurrentVersion = function (url) {
   fs.writeFileSync(tagFile, url);
 };
 
-exports.download = function (callback) {
+var getLocalPath = function () {
+  if (process.platform === "win32") {
+    return winPath();
+  } else if (process.platform === "darwin") {
+    return macPath();
+  } else {
+    return linuxPath();
+  }
+};
+
+exports.download = function (options, callback) {
+  if (!callback && typeof options === 'function') {
+    callback = options;
+    options = {};
+  }
+  if (options.noUpdate) {
+    var path = getLocalPath();
+    if (fs.existsSync(path)) {
+      return callback(path);
+    } else {
+      return callback(null);
+    }
+  }
   getDownloadLink(function (url) {
     if (url && url !== getCurrentVersion()) {
       downloadVerifyUnpack(url, callback);
     } else if (url) { // == current version
-      if (process.platform === "win32") {
-        callback(winPath());
-      } else if (process.platform === "darwin") {
-        callback(macPath());
+      var path = getLocalPath();
+      if (fs.existsSync(path)) {
+        return callback(path);
       } else {
-        console.warn(chalk.yellow("Not Mac/Windows. Skipping Tor Browser Download."));
-        callback(false);
+        return callback(null);
       }
     } else {
       callback(url);

@@ -115,22 +115,27 @@ var waitForTor = function (i, success, failure) {
  * callback is called with a pre-authenticated net.socket on success, or null
  * on failure.
  */
-exports.connect = function (callback) {
+exports.connect = function (options, callback) {
+  if (!callback && typeof options === 'function') {
+    callback = options;
+    options = {};
+  }
+
   if (runningChild) {
     return connectWithChild(callback, function(err) {
       console.error(chalk.red("Failed to connect to existing child."), err);
       callback(null);
     });
   }
-  // if binary path is explicitly set, use that.
-  if (process.env.tor) {
-    var tor = process.env.tor;
+  // if a binary path is explicitly set, use that.
+  if (process.env.tor || options.tor) {
+    var tor = process.env.tor || options.tor;
     startTor(tor, callback, function () {
       console.error(chalk.red("Failed to start the binary defined in the tor environmental variable."));
       callback(null);
     });
-  } else if (process.platform === 'darwin' || process.platform === 'win32') {
-    require('./download').download(function (tor) {
+  } else if (!options.useSystem) {
+    require('./download').download(options, function (tor) {
       if (!tor) {
         console.error(chalk.red("Failed to acquire an appropriate version of tor."));
         callback(null);
@@ -144,10 +149,6 @@ exports.connect = function (callback) {
   } else {
     require('./linux').openUnixSocket(callback, function (err) {
       console.error(chalk.red("Failed to connect to system tor:") + err);
-      console.error(chalk.yellow("Most common cause of this error is that your account does not"));
-      console.error(chalk.yellow("have permission to control tor. Rectify by running:"));
-      console.error(chalk.blue("sudo usermod -a -G debian-tor <username>"));
-
       callback(null);
     });
   }
