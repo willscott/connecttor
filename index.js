@@ -102,10 +102,10 @@ var startTor = function (binary, success, failure) {
 var waitForTor = function (i, success, failure) {
   if (readChildControlPort() > 0) {
     // TODO: potentially should explicitly 'take-ownership' on first connect.
-    console.log('ctrl port found');
+    //console.log('ctrl port found');
     connectWithChild(success, failure);
   } else if (i < 50) { // 5 seconds.
-    console.log('failed to find ctrl port.');
+    //console.log('failed to find ctrl port.');
     setTimeout(waitForTor.bind(this, i + 1, success, failure), 100);
   }
 };
